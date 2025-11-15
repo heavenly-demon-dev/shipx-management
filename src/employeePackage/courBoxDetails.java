@@ -9,6 +9,7 @@ package employeePackage;
  */
 
 import boxPackage.box;
+import customerPackage.NotificationManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -25,27 +26,14 @@ public class courBoxDetails {
 
     public void displayBoxMenu(){
         Scanner sc = new Scanner(System.in);
-        ArrayList<box> boxList = new ArrayList<>();
-        File boxDetailsFile = new File("boxDetails.txt");
-        
-        
-           if (boxDetailsFile.exists() && boxDetailsFile.length() > 0) { 
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(boxDetailsFile))) { 
-                boxList = (ArrayList<box>) 
-                ois.readObject(); 
-            } catch (Exception exc) { 
-                System.out.println("Error loading box data: " + exc.getMessage());
-                boxList = new ArrayList<>(); 
-            }
-        }
-          int choice;
-          
+        int choice;
+
         while(true) {
-           
+
             System.out.println("------------- MANAGE BOX DETAILS -------------");
-            System.out.println("1 - Update box");
-            System.out.println("2 - View box list");
-            System.out.println("3 - Search box");
+            System.out.println("1 - PICK UP");
+            System.out.println("2 - DROP OFF");
+            System.out.println("3 - VIEW NON DELIVERED BOXES");
             System.out.println("4 - Log Out");
             System.out.print("Choose an option: ");
             
@@ -60,132 +48,234 @@ public class courBoxDetails {
             }
             switch (choice) {
                 case 1:
-                  
-                    if(boxList.isEmpty()){
-                        System.out.println("NO BOXES AVAILABLE.");
-                        break;
-                    }
-                    
-                    System.out.println("UPDATE BOX");
-                    System.out.print("ENTER BOX ID: ");
-                    int updateID; 
-                    try { 
-                        updateID = sc.nextInt();
-                        sc.nextLine();
-                    } catch (InputMismatchException exc) {
-                        System.out.println("===== INVALID BOX ID. RETURNS TO MENU =====");
-                        sc.nextLine();
-                        break;
-                    }
-                    boolean updated = false;
-                    
-                    for(box bx: boxList){
-                        if(bx.getReceiptID() == updateID){
-                           
-                            System.out.println("------- CURRENT BOX INFORMATION ------");
-                            System.out.println("Status: " + bx.getStatus()); 
-                            System.out.println("Shipment Date: " + bx.getShipmentDate()); 
-                            System.out.println("Delivered Date: " + bx.getDeliveredDate()); 
-                            System.out.println("----------------------------------");
-                            
-                            
-                            System.out.print("Enter UPDATED STATUS (Shipped, In transit, Delivered): ");
-                            String newStatus = sc.nextLine();
-                            bx.setStatus(newStatus); 
-                            
-                           
-                            try { 
-                                System.out.print("Enter UPDATED SHIPMENT DATE (YYYY-MM-DD or 0 for no change): "); 
-                                int newShipmentDate = sc.nextInt();
-                                sc.nextLine();
-                                if (newShipmentDate != 0) { 
-                                    bx.setShipmentDate(newShipmentDate); 
-                                }
-                            } catch (InputMismatchException exc) {
-                                System.out.println("=====INVALID INPUT FOR DATE=====");
-                                sc.nextLine();
-                            }
-                            
-                             
-                             try { 
-                                System.out.print("Enter UPDATED DELIVERED DATE (YYYYMMDD or 0 for no change): "); 
-                                int newDeliveredDate = sc.nextInt();
-                                sc.nextLine();
-                                if (newDeliveredDate != 0) { 
-                                    bx.setDeliveredDate(newDeliveredDate); 
-                                }
-                            } catch (InputMismatchException exc) {
-                                System.out.println("=====INVALID INPUT FOR DELIVERED DATE====="); 
-                                sc.nextLine();
-                            }
-
-                            updated = true;
-                            System.out.println("Status, Shipment Date, and Delivered Date have been UPDATED."); 
-                            break;
-                        }
-                    }
-                    
-                    if(updated){
-                       
-                        try (ObjectOutputStream updatedOos = new ObjectOutputStream(new FileOutputStream(boxDetailsFile))) { 
-                           updatedOos.writeObject(boxList); 
-                        } catch (IOException exc) {
-                            System.out.println("ERROR saving updated box list: " + exc.getMessage()); 
-                        }
-                        System.out.println("BOX HAS BEEN SAVED SUCCESSFULLY to boxDetails.txt.");
-                    } else {
-                        System.out.println("ERROR: No box found with ID: " + updateID);
-                    }
+                    pickUpBox();
                     break;
                 case 2:
-                    
-                    if (boxList.isEmpty()) {
-                        System.out.println("NO BOXES FOUND");
-                    } else {
-                        System.out.println("------------- BOX LIST (COURIER VIEW) -------------"); 
-                        for (box box : boxList) {
-                            System.out.println(box); 
-                        }
-                    }
+                    dropOffBox();
                     break;
-
                 case 3:
-                    if(boxList.isEmpty()){
-                        System.out.println("NO BOXES AVAILABLE.");
-                        break;
-                    }
-                    
-                    System.out.println(" ");
-                    System.out.print("Enter Box ID to search: ");
-                    int searchID = sc.nextInt();
-                    boolean found = false;
-
-                    for (box b : boxList) {
-                        if (b.getReceiptID() == searchID) {
-                            System.out.println(" ");
-                            System.out.println("BOX FOUND : " + b);
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found) {
-                        System.out.println("No box found with ID: " + searchID);
-                    }
+                    viewNonDeliveredBoxes();
                     break;
-
                 case 4:
                     System.out.println(" ");
-                    return; 
-                    
+                    return;
                 default:
-                 
                     System.out.println("====== INVALID CHOICE: Please select a valid option (1-4) ======");
                     break;
             }
 
             
 
-        } 
+        }
+    }
+
+    /**
+     * Pick up a box - Only allows boxes with status "Waiting for Courier"
+     * Automatically updates status to "PICKED UP" and notifies customer
+     */
+    private void pickUpBox() {
+        Scanner sc = new Scanner(System.in);
+        File file = new File("boxList.txt");
+        ArrayList<box> boxList = new ArrayList<>();
+
+        // Load boxes
+        if (file.exists() && file.length() > 0) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                boxList = (ArrayList<box>) ois.readObject();
+            } catch (Exception e) {
+                System.out.println("Error loading box data: " + e.getMessage());
+                return;
+            }
+        }
+
+        if (boxList.isEmpty()) {
+            System.out.println("NO BOXES AVAILABLE FOR PICK UP.");
+            return;
+        }
+
+        System.out.println("\n------------- PICK UP BOX -------------");
+        System.out.print("Enter Receipt ID: ");
+        int receiptID;
+
+        try {
+            receiptID = sc.nextInt();
+            sc.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("INVALID RECEIPT ID.");
+            sc.nextLine();
+            return;
+        }
+
+        boolean found = false;
+        for (box b : boxList) {
+            if (b.getReceiptID() == receiptID) {
+                found = true;
+
+                // Validate: Only allow boxes with status "Waiting for Courier"
+                if (!b.getStatus().equalsIgnoreCase("Waiting for Courier")) {
+                    System.out.println("ERROR: This box cannot be picked up.");
+                    System.out.println("Current Status: " + b.getStatus());
+                    System.out.println("Only boxes validated by manager (status: 'Waiting for Courier') can be picked up.");
+                    return;
+                }
+
+                // Update status to PICKED UP
+                b.setStatus("PICKED UP");
+
+                // Save updated box list
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                    oos.writeObject(boxList);
+                    System.out.println("\n---------------------------");
+                    System.out.println("SUCCESS: Box #" + receiptID + " has been PICKED UP");
+                    System.out.println("---------------------------");
+                } catch (IOException e) {
+                    System.out.println("ERROR saving box data: " + e.getMessage());
+                    return;
+                }
+
+                // Send notification to customer
+                if (b.getUserEmail() != null) {
+                    NotificationManager.addNotification(
+                        b.getUserEmail(),
+                        receiptID,
+                        "Your box has been picked up by the courier and is now in transit."
+                    );
+                    System.out.println("Notification sent to customer.");
+                } else {
+                    System.out.println("Warning: Box has no associated user email. Notification not sent.");
+                }
+
+                break;
+            }
+        }
+
+        if (!found) {
+            System.out.println("ERROR: No box found with Receipt ID: " + receiptID);
+        }
+    }
+
+    /**
+     * Drop off a box to recipient - Only allows boxes with status "PICKED UP"
+     * Automatically updates status to "DELIVERED" and notifies customer
+     */
+    private void dropOffBox() {
+        Scanner sc = new Scanner(System.in);
+        File file = new File("boxList.txt");
+        ArrayList<box> boxList = new ArrayList<>();
+
+        // Load boxes
+        if (file.exists() && file.length() > 0) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                boxList = (ArrayList<box>) ois.readObject();
+            } catch (Exception e) {
+                System.out.println("Error loading box data: " + e.getMessage());
+                return;
+            }
+        }
+
+        if (boxList.isEmpty()) {
+            System.out.println("NO BOXES AVAILABLE FOR DROP OFF.");
+            return;
+        }
+
+        System.out.println("\n------------- DROP OFF BOX -------------");
+        System.out.print("Enter Receipt ID: ");
+        int receiptID;
+
+        try {
+            receiptID = sc.nextInt();
+            sc.nextLine();
+        } catch (InputMismatchException e) {
+            System.out.println("INVALID RECEIPT ID.");
+            sc.nextLine();
+            return;
+        }
+
+        boolean found = false;
+        for (box b : boxList) {
+            if (b.getReceiptID() == receiptID) {
+                found = true;
+
+                // Validate: Only allow boxes with status "PICKED UP"
+                if (!b.getStatus().equalsIgnoreCase("PICKED UP")) {
+                    System.out.println("ERROR: This box cannot be dropped off.");
+                    System.out.println("Current Status: " + b.getStatus());
+                    System.out.println("Only boxes that have been picked up (status: 'PICKED UP') can be dropped off.");
+                    return;
+                }
+
+                // Update status to DELIVERED
+                b.setStatus("DELIVERED");
+
+                // Save updated box list
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                    oos.writeObject(boxList);
+                    System.out.println("\n---------------------------");
+                    System.out.println("SUCCESS: Box #" + receiptID + " has been DELIVERED");
+                    System.out.println("---------------------------");
+                } catch (IOException e) {
+                    System.out.println("ERROR saving box data: " + e.getMessage());
+                    return;
+                }
+
+                // Send notification to customer
+                if (b.getUserEmail() != null) {
+                    NotificationManager.addNotification(
+                        b.getUserEmail(),
+                        receiptID,
+                        "Your box has been successfully delivered to the recipient."
+                    );
+                    System.out.println("Notification sent to customer.");
+                } else {
+                    System.out.println("Warning: Box has no associated user email. Notification not sent.");
+                }
+
+                break;
+            }
+        }
+
+        if (!found) {
+            System.out.println("ERROR: No box found with Receipt ID: " + receiptID);
+        }
+    }
+
+    /**
+     * View all boxes that haven't been delivered yet
+     * Shows boxes with status: Waiting for Courier, PICKED UP, etc. (excludes DELIVERED and EXPIRED)
+     */
+    private void viewNonDeliveredBoxes() {
+        File file = new File("boxList.txt");
+        ArrayList<box> boxList = new ArrayList<>();
+
+        // Load boxes
+        if (file.exists() && file.length() > 0) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                boxList = (ArrayList<box>) ois.readObject();
+            } catch (Exception e) {
+                System.out.println("Error loading box data: " + e.getMessage());
+                return;
+            }
+        }
+
+        if (boxList.isEmpty()) {
+            System.out.println("NO BOXES FOUND.");
+            return;
+        }
+
+        System.out.println("\n------------- NON-DELIVERED BOXES -------------");
+        boolean found = false;
+
+        for (box b : boxList) {
+            // Show all boxes except DELIVERED and EXPIRED
+            if (!b.getStatus().equalsIgnoreCase("DELIVERED") &&
+                !b.getStatus().equalsIgnoreCase("EXPIRED")) {
+                System.out.println(b);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            System.out.println("NO NON-DELIVERED BOXES FOUND. All boxes have been delivered or expired.");
+        }
     }
 }

@@ -31,15 +31,16 @@ public class box implements Serializable {
     private String items; 
     private String region; 
     private double price; 
-    private String receiptTimestamp; 
-    private String expiryTimestamp; 
+    private String receiptTimestamp;
+    private String expiryTimestamp;
     private int boxID;
+    private String userEmail; // Email of the user who created this box
     
 
     public box(String status, int receiptID, String senderName, String senderAddress, String senderContact, String senderEmail,
                String receiverName, String receiverAddress, String receiverContact, String receiverEmail,
                String items, String region, double price,
-               String receiptTimestamp, String expiryTimestamp) {
+               String receiptTimestamp, String expiryTimestamp, String userEmail) {
 
         this.status = status;
         this.receiptID = receiptID;
@@ -51,12 +52,13 @@ public class box implements Serializable {
         this.receiverAddress = receiverAddress;
         this.receiverContact = receiverContact;
         this.receiverEmail = receiverEmail;
-        this.items = items;  
+        this.items = items;
         this.region = region;
         this.price = price;
         this.receiptTimestamp = receiptTimestamp;
         this.expiryTimestamp = expiryTimestamp;
         this.boxID = boxID;
+        this.userEmail = userEmail;
     }
      public void setReceiptID(int receiptID) { 
          this.receiptID = receiptID; 
@@ -132,10 +134,13 @@ public class box implements Serializable {
         return receiptTimestamp; 
     }
     public String getExpiryTimestamp() {
-        return expiryTimestamp; 
+        return expiryTimestamp;
     }
-    
-     
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
     @Override
     public String toString() {
         return "\n----------- RECEIPT " + receiptID + " -----------\n" +

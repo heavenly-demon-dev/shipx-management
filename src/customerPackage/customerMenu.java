@@ -42,7 +42,8 @@ public class customerMenu {
             System.out.println("2. VIEW BOX STATUS");
             System.out.println("3. VIEW RECEIPT HISTORY");
             System.out.println("4. CONTACT SHIPX");
-            System.out.println("5. LOG OUT");
+            System.out.println("5. NOTIFICATIONS");
+            System.out.println("6. LOG OUT");
             System.out.println("---------------------- ------------------------");
             System.out.print("Choose an option: ");
 
@@ -57,20 +58,23 @@ public class customerMenu {
             }
 
             switch (choice) {
-                case 1: 
+                case 1:
                     sendBox();
                     break;
                 case 2:
-                   
+                    viewBoxStatus();
                     break;
-                case 3: 
+                case 3:
                     viewReceipts();
                     break;
                 case 4:
                     contactShipX();
                     break;
                 case 5:
-                    cusAcc.displayMenu();  
+                    viewNotifications();
+                    break;
+                case 6:
+                    cusAcc.displayMenu();
                     break;
                default:
                     System.out.println("====== INVALID CHOICE. TRY AGAIN ====== ");
@@ -241,7 +245,7 @@ public class customerMenu {
             int receiptID = 100000 + r.nextInt(100000);
         box newBox = new box("PENDING", receiptID, senderName, senderAddress, senderContact, senderEmail,
                 receiverName, receiverAddress, receiverContact, receiverEmail,
-                items, region, price, now.format(formatter), expiry.format(formatter)); 
+                items, region, price, now.format(formatter), expiry.format(formatter), user.getEmail()); 
         
         boxList.add(newBox); 
         saveBoxes(boxList); 
@@ -286,6 +290,54 @@ public class customerMenu {
       }
   }
 
+    private void viewBoxStatus() {
+        File file = new File("boxList.txt");
+        ArrayList<box> boxList = new ArrayList<>();
+
+        if (file.exists() && file.length() > 0) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                boxList = (ArrayList<box>) ois.readObject();
+            } catch (Exception e) {
+                return;
+            }
+        }
+
+        if (boxList.isEmpty()) {
+            System.out.println("    NO BOXES FOUND.  ");
+            return;
+        }
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        boolean found = false;
+
+        // Update expired boxes
+        for (box b : boxList) {
+            try {
+                LocalDateTime expiry = LocalDateTime.parse(b.getExpiryTimestamp(), formatter);
+                if (now.isAfter(expiry) && b.getStatus().equalsIgnoreCase("PENDING")) {
+                    b.setStatus("EXPIRED");
+                }
+            } catch (Exception exc) {
+            }
+        }
+
+        saveBoxes(boxList);
+
+        System.out.println("------------- VIEW BOX STATUS------------- ");
+        for (box b : boxList) {
+            // Filter by logged-in user's email
+            if (b.getUserEmail() != null && b.getUserEmail().equalsIgnoreCase(user.getEmail())) {
+                System.out.println(b);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            System.out.println("    NO BOXES FOUND FOR YOUR ACCOUNT.    ");
+        }
+    }
+
     private void viewReceipts() {
         File file = new File("boxList.txt");
         ArrayList<box> boxList = new ArrayList<>();
@@ -319,18 +371,49 @@ public class customerMenu {
     
         System.out.println("------------- VIEW RECEIPT HISTORY------------- ");
         for (box b : boxList) {
-            if (b.getStatus().equalsIgnoreCase("PENDING") || b.getStatus().equalsIgnoreCase("EXPIRED")) {
-                System.out.println(b);
-                found = true;
+            // Filter by logged-in user's email AND pending/expired status
+            if (b.getUserEmail() != null && b.getUserEmail().equalsIgnoreCase(user.getEmail())) {
+                if (b.getStatus().equalsIgnoreCase("PENDING") || b.getStatus().equalsIgnoreCase("EXPIRED")) {
+                    System.out.println(b);
+                    found = true;
+                }
             }
         }
 
         if (!found) {
-            System.out.println("    NO PENDING/EXPIRED RECEIPTS WERE FOUND.    ");
+            System.out.println("    NO PENDING/EXPIRED RECEIPTS WERE FOUND FOR YOUR ACCOUNT.    ");
         }
     }
 
- 
+    /**
+     * View all notifications for the logged-in user
+     */
+    private void viewNotifications() {
+        System.out.println("\n------------- YOUR NOTIFICATIONS ------------- ");
+
+        ArrayList<Notification> notifications = NotificationManager.getNotificationsForUser(user.getEmail());
+
+        if (notifications.isEmpty()) {
+            System.out.println("    NO NOTIFICATIONS.    ");
+            return;
+        }
+
+        // Count unread notifications
+        int unreadCount = NotificationManager.countUnreadNotifications(user.getEmail());
+        if (unreadCount > 0) {
+            System.out.println("You have " + unreadCount + " new notification(s).\n");
+        }
+
+        // Display all notifications
+        for (Notification notif : notifications) {
+            System.out.println(notif);
+        }
+
+        // Mark all as read
+        NotificationManager.markAllAsRead(user.getEmail());
+        System.out.println("\n------------- ALL NOTIFICATIONS MARKED AS READ ------------- ");
+    }
+
     public static void contactShipX() {
         System.out.println("\n-------------  CONTACT US! ------------- ");
         System.out.println(" Address: ShipX Main Branch, Unit 203, Skyline Business Center, Katipunan Avenue,\n "
