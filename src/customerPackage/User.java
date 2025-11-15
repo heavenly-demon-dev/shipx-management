@@ -20,7 +20,6 @@ import java.io.Serializable;
         private String email;
         private String password;
         private String status;
-        private User loggedInUser;
         
        public User(String name, int age, String email, String password){
            this.name = name;

@@ -90,7 +90,11 @@ public class customerAccounts {
         String email = sc.nextLine();
         System.out.print("Enter password     : ");
         String password = sc.nextLine();
-        
+         if(name.isBlank() || email.isBlank() || password.isBlank()){
+            System.out.println("====== PLEASE FILL UP ALL THE REQUIREMENTS. TRY AGAIN.======\n");
+                       return;
+                                }
+         
         //i r run lang nya ung mga old users bago icheck ung duplicate para masave ung prev accs
         if (userAccountsFile.exists() && userAccountsFile.length() > 0) {
             try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(userAccountsFile))) {
@@ -143,54 +147,69 @@ public class customerAccounts {
     }
 
     public void logIn() {
-           System.out.println("\n------- SHIPX CUSTOMER LOG IN -------");
-           System.out.print("Enter email: ");
-           String email = sc.nextLine();
-           System.out.print("Enter password: ");
-           String password = sc.nextLine();
+    System.out.println("\n------- SHIPX CUSTOMER LOG IN -------");
+    System.out.print("Enter email: ");
+    String email = sc.nextLine();
+    System.out.print("Enter password: ");
+    String password = sc.nextLine();
 
-           if (customerLogIn(email, password)) {
-               System.out.println("\n---------------------------");
-               System.out.println("      LOG IN SUCCESSFUL!");
-               System.out.println("---------------------------");
-               customerMenu cusMenu = new customerMenu();
-               cusMenu.userMenu();
-           }
-       }
- 
-    public static boolean customerLogIn(String email, String password){
-        File file = new File("userAccounts.txt");
-        if(file.exists() || file.length() > 0){
-               System.out.println("\n--------------------------------------------");
-               System.out.println("NO EXISTING ACCOUNTS FOUND. PLEASE SIGN UP FIRST.");
-               System.out.println("--------------------------------------------");
-               return false;
-        }
-//run old user accounts
-        try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file ))){
-            ArrayList<User> usrList = (ArrayList<User>) //instantiation
-                    ois.readObject();
+    user = customerLogIn(email, password);
 
-            for(User us : usrList){
-                if(us.getEmail().equals(email) && us.getPassword().equals(password)){
-                    if(us.getStatus().equalsIgnoreCase("Disabled")){
+    if (user != null) {
+        System.out.println("\n---------------------------");
+        System.out.println("      LOG IN SUCCESSFUL!");
+        System.out.println("---------------------------");
+        customerMenu cusMenu = new customerMenu(user); 
+        cusMenu.userMenu();
+    }
+}
+    
+   public static User customerLogIn(String email, String password){
+    File file = new File("userAccounts.txt");
+
+    if (!file.exists() || file.length() == 0) {
+        System.out.println("\n--------------------------------------------");
+        System.out.println("NO EXISTING ACCOUNTS FOUND. PLEASE SIGN UP FIRST.");
+        System.out.println("--------------------------------------------");
+        return null;
+    }
+
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+        ArrayList<User> usrList = (ArrayList<User>) ois.readObject();
+
+        for (User us : usrList) {
+            if (us.getEmail().equalsIgnoreCase(email)) {
+                
+                // Check if the account is disabled, and ensure "status" comparison is done safely
+                if (us.getStatus().trim().equalsIgnoreCase("Disabled")) { 
                     System.out.println("\n---------------------------");
                     System.out.println("YOUR ACCOUNT HAS BEEN DISABLED");
                     System.out.println("---------------------------\n");
-                       return false;
-                    }
-
-                    return true;
+                    return null; // Prevent login if the account is disabled
                 }
+
+                // Check if the password is correct
+                if (!us.getPassword().equals(password)) {
+                    System.out.println("\n---------------------------");
+                    System.out.println("PASSWORD INCORRECT! ACCESS DENIED");
+                    System.out.println("---------------------------");
+                    return null; // Prevent login if password is incorrect
+                }
+
+                // If both email and password are correct, return the user
+                return us;
             }
-           System.out.println("\n---------------------------");
-           System.out.println("INVALID ACCOUNT! ACCESS DENIED");
-           System.out.println("---------------------------");
-        }catch(Exception exc){
         }
-        return false;
+
+        // If email is not found
+        System.out.println("\n---------------------------");
+        System.out.println("EMAIL NOT FOUND! ACCESS DENIED");
+        System.out.println("---------------------------");
+        return null;
+
+    } catch (Exception exc) {
+        System.out.println("Error reading user accounts file.");
+        return null;
     }
-
-
-
-   }
+}
+}

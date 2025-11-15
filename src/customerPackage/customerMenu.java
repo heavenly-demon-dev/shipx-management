@@ -22,7 +22,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class customerMenu {
+     private User user;
      
+     public customerMenu(User user){
+         this.user = user;
+     }
+     public customerMenu(){
+         
+     }
     public void userMenu() {
         File file = new File("boxList.txt");
         Scanner sc = new Scanner(System.in);
@@ -34,8 +41,8 @@ public class customerMenu {
             System.out.println("1. SEND A BOX");
             System.out.println("2. VIEW BOX STATUS");
             System.out.println("3. VIEW RECEIPT HISTORY");
-            System.out.println("5. CONTACT SHIPX");
-            System.out.println("6. LOG OUT");
+            System.out.println("4. CONTACT SHIPX");
+            System.out.println("5. LOG OUT");
             System.out.println("---------------------- ------------------------");
             System.out.print("Choose an option: ");
 
@@ -50,7 +57,7 @@ public class customerMenu {
             }
 
             switch (choice) {
-                case 1:
+                case 1: 
                     sendBox();
                     break;
                 case 2:
@@ -63,9 +70,9 @@ public class customerMenu {
                     contactShipX();
                     break;
                 case 5:
-                    cusAcc.displayMenu();
-                    return;
-                default:
+                    cusAcc.displayMenu();  
+                    break;
+               default:
                     System.out.println("====== INVALID CHOICE. TRY AGAIN ====== ");
             }
         }
@@ -338,8 +345,3 @@ public class customerMenu {
         System.out.println("  TikTok    : @shipX_Official");
     }
     }
-    
- 
-
-    
-
